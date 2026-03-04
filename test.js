@@ -1,4 +1,6 @@
-const response = await fetch('http://localhost:3000/generate-polygon', {
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+
+const response = await fetch('https://address-service-six.vercel.app/generate-polygon', {
     method: 'POST',
     headers: {
         'Content-Type': 'application/json'

@@ -4,6 +4,13 @@ const axios = require('axios');
 const app = express();
 app.use(express.json());
 
+// Enable CORS for frontend requests
+app.use((req, res, next) => {
+    res.header("Access-Control-Allow-Origin", "*");
+    res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+    next();
+});
+
 app.post('/generate-polygon', async (req, res) => {
     const { address } = req.body;
 

@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Embedded Map</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <style>
+        body,
+        html,
+        #map {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            width: 100%;
+            background: #f8fafc;
+        }
+
+        .leaflet-container {
+            background: #f8fafc !important;
+        }
+
+        /* Custom Tooltip Styling for Light Mode */
+        .custom-tooltip {
+            background: rgba(255, 255, 255, 0.95) !important;
+            border: 1px solid rgba(0, 0, 0, 0.1) !important;
+            color: #1e293b !important;
+            border-radius: 8px !important;
+            padding: 8px 12px !important;
+            font-weight: 600 !important;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1) !important;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="map"></div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script>
+        // Initialize map centered on Berlin
+        const map = L.map('map', {
+            zoomControl: false,
+            attributionControl: false
+        }).setView([52.5200, 13.4050], 12);
+
+        // Add a premium light-themed tile layer (CartoDB Voyager)
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+            maxZoom: 19
+        }).addTo(map);
+
+        // Fetch polygon data from the deployed service
+        async function fetchPolygon() {
+            try {
+                const response = await fetch('https://address-service-six.vercel.app/generate-polygon', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        address: "Alexanderstraße 15, 10178 Berlin, Germany"
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.polygon_bounds) {
+                    // Convert API response {lat, lng} objects to Leaflet [lat, lng] arrays
+                    const regionCoords = data.polygon_bounds.map(p => [p.lat, p.lng]);
+
+                    // Center map on the returned center
+                    map.setView([data.center.lat, data.center.lng], 15);
+
+                    // Create the polygon
+                    const polygon = L.polygon(regionCoords, {
+                        color: '#4f46e5',
+                        fillColor: '#4f46e5',
+                        fillOpacity: 0.25,
+                        weight: 2,
+                        smoothFactor: 1
+                    }).addTo(map);
+
+                    // Add a tooltip
+                    polygon.bindTooltip(`<strong>${data.input_address}</strong><br>Generated Polygon`, {
+                        permanent: false,
+                        direction: "top",
+                        className: "custom-tooltip"
+                    });
+
+                    // Add interactive effects
+                    polygon.on('mouseover', function (e) {
+                        this.setStyle({
+                            fillOpacity: 0.4,
+                            weight: 4
+                        });
+                    });
+
+                    polygon.on('mouseout', function (e) {
+                        this.setStyle({
+                            fillOpacity: 0.25,
+                            weight: 2
+                        });
+                    });
+
+                    // Zoom to Region
+                    map.fitBounds(polygon.getBounds(), { padding: [100, 100] });
+                }
+            } catch (error) {
+                console.error("Error fetching polygon from API:", error);
+            }
+        }
+
+        fetchPolygon();
+    </script>
+</body>
+
+</html>
