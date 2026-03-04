@@ -69,7 +69,13 @@
                 if (data.regions && data.regions.length > 0) {
                     // Center map on the returned main center
                     map.setView([data.center.lat, data.center.lng], 13);
+
+                    // Add a marker for the address center
+                    const mainMarker = L.marker([data.center.lat, data.center.lng]).addTo(map);
+                    mainMarker.bindPopup(`<strong>${data.resolved_address}</strong>`).openPopup();
+
                     const allBounds = L.latLngBounds();
+                    allBounds.extend([data.center.lat, data.center.lng]);
 
                     data.regions.forEach((region, index) => {
                         // Convert API response {lat, lng} objects to Leaflet [lat, lng] arrays
