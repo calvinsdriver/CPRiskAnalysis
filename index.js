@@ -28,17 +28,37 @@ app.all('/generate-polygon', async (req, res) => {
         // 1. Geocode the address using free Nominatim API
         const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1`;
         const https = require('https');
-        const response = await axios.get(url, {
+        let geocodeResponse = await axios.get(url, {
             headers: { 'User-Agent': 'FloodZoneTester/1.0' },
             httpsAgent: new https.Agent({ rejectUnauthorized: false })
         });
 
-        if (response.data.length === 0) {
+        // Fallback: If not found, try cleaning the address (strip Suite, Apt, Unit, etc.)
+        if (geocodeResponse.data.length === 0) {
+            const cleanedAddress = address
+                .replace(/(?:,\s*)?\b(?:Suite|Apt|Unit|Room|Floor|Level)\b\s*[0-9A-Z-]+/gi, '')
+                .replace(/#\s*[0-9A-Z-]+/gi, '')
+                .replace(/,\s*,/g, ',')
+                .replace(/,\s*$/g, '')
+                .replace(/\s+/g, ' ')
+                .trim();
+
+            if (cleanedAddress !== address && cleanedAddress.length > 0) {
+                console.log(`Original address not found. Trying cleaned address: "${cleanedAddress}"`);
+                const fallbackUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(cleanedAddress)}&format=json&limit=1`;
+                geocodeResponse = await axios.get(fallbackUrl, {
+                    headers: { 'User-Agent': 'FloodZoneTester/1.0' },
+                    httpsAgent: new https.Agent({ rejectUnauthorized: false })
+                });
+            }
+        }
+
+        if (geocodeResponse.data.length === 0) {
             return res.status(404).json({ error: "Address not found" });
         }
 
-        const centerLat = parseFloat(response.data[0].lat);
-        const centerLng = parseFloat(response.data[0].lon);
+        const centerLat = parseFloat(geocodeResponse.data[0].lat);
+        const centerLng = parseFloat(geocodeResponse.data[0].lon);
 
         const regions = [];
         const numRegions = Math.floor(Math.random() * 3) + 3; // 3 to 5 regions
@@ -98,7 +118,7 @@ app.all('/generate-polygon', async (req, res) => {
 
         res.json({
             input_address: address,
-            resolved_address: response.data[0].display_name,
+            resolved_address: geocodeResponse.data[0].display_name,
             center: { lat: centerLat, lng: centerLng },
             regions: regions
         });
