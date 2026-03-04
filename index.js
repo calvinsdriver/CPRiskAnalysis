@@ -1,0 +1,67 @@
+const express = require('express');
+const axios = require('axios');
+
+const app = express();
+app.use(express.json());
+
+app.post('/generate-polygon', async (req, res) => {
+    const { address } = req.body;
+
+    if (!address) {
+        return res.status(400).json({ error: "Address is required" });
+    }
+
+    try {
+        // 1. Geocode the address using free Nominatim API
+        const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1`;
+        const response = await axios.get(url, {
+            headers: { 'User-Agent': 'FloodZoneTester/1.0' } // Nominatim requires a User-Agent
+        });
+
+        if (response.data.length === 0) {
+            return res.status(404).json({ error: "Address not found" });
+        }
+
+        const centerLat = parseFloat(response.data[0].lat);
+        const centerLng = parseFloat(response.data[0].lon);
+
+        // 2. Generate a randomized polygon completely surrounding the center
+        const numPoints = Math.floor(Math.random() * 4) + 5; // Generate 5 to 8 vertices
+        const polygon = [];
+        const angleStep = (2 * Math.PI) / numPoints;
+
+        for (let i = 0; i < numPoints; i++) {
+            // Randomize angle within the segment to distribute points around the circle
+            const angle = angleStep * i + (Math.random() * angleStep * 0.8);
+
+            // Randomize distance for each point (between 0.0005 and 0.0015 degrees)
+            const distanceLat = 0.0005 + Math.random() * 0.0010;
+            const distanceLng = 0.0005 + Math.random() * 0.0015;
+
+            const latOffset = Math.sin(angle) * distanceLat;
+            const lngOffset = Math.cos(angle) * distanceLng;
+
+            polygon.push({
+                lat: centerLat + latOffset,
+                lng: centerLng + lngOffset
+            });
+        }
+
+        // Close the shape by repeating the first point
+        polygon.push(polygon[0]);
+
+        res.json({
+            input_address: address,
+            resolved_address: response.data[0].display_name,
+            center: { lat: centerLat, lng: centerLng },
+            polygon_bounds: polygon
+        });
+
+    } catch (error) {
+        console.error("Error geocoding:", error.message);
+        res.status(500).json({ error: "Failed to fetch geocode data" });
+    }
+});
+
+const PORT = 3000;
+app.listen(PORT, () => console.log(`Service running on http://localhost:${PORT}`));
