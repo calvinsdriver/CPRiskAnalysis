@@ -46,10 +46,8 @@ app.all('/generate-polygon', async (req, res) => {
         // Place the first region at the exact center
         const centerPoints = [{ lat: centerLat, lng: centerLng }];
 
-        // Generate offsets for the other regions
         for (let r = 1; r < numRegions; r++) {
             const angle = Math.random() * 2 * Math.PI;
-            // Ensure distance is around 0.0350-0.0550 to prevent overlap (max radius is ~0.0150)
             const distLat = 0.0350 + Math.random() * 0.0200;
             const distLng = 0.0350 + Math.random() * 0.0200;
             centerPoints.push({
@@ -58,8 +56,11 @@ app.all('/generate-polygon', async (req, res) => {
             });
         }
 
+        // GENERATE BASE POLYGONS
+        let minLat = 90, maxLat = -90, minLng = 180, maxLng = -180;
+
         for (const pt of centerPoints) {
-            const numPoints = Math.floor(Math.random() * 6) + 5; // Generate 5 to 10 vertices
+            const numPoints = Math.floor(Math.random() * 6) + 5;
             const polygon = [];
             const angleStep = (2 * Math.PI) / numPoints;
 
@@ -68,10 +69,15 @@ app.all('/generate-polygon', async (req, res) => {
                 const distanceLat = 0.0050 + Math.random() * 0.0080;
                 const distanceLng = 0.0050 + Math.random() * 0.0100;
 
-                polygon.push({
-                    lat: pt.lat + Math.sin(angle) * distanceLat,
-                    lng: pt.lng + Math.cos(angle) * distanceLng
-                });
+                const lat = pt.lat + Math.sin(angle) * distanceLat;
+                const lng = pt.lng + Math.cos(angle) * distanceLng;
+                polygon.push({ lat, lng });
+
+                // Track bounding box for water query
+                minLat = Math.min(minLat, lat);
+                maxLat = Math.max(maxLat, lat);
+                minLng = Math.min(minLng, lng);
+                maxLng = Math.max(maxLng, lng);
             }
             polygon.push(polygon[0]);
 
@@ -80,6 +86,58 @@ app.all('/generate-polygon', async (req, res) => {
                 center: pt,
                 polygon_bounds: polygon
             });
+        }
+
+        // FETCH WATER BODIES & CLIP POLYGONS TO STAY ON LAND
+        try {
+            const turf = require('@turf/turf');
+            const query = `[out:json][timeout:5];(way["natural"="water"](${minLat},${minLng},${maxLat},${maxLng});relation["natural"="water"](${minLat},${minLng},${maxLat},${maxLng});way["waterway"](${minLat},${minLng},${maxLat},${maxLng}););out geom;`;
+
+            const waterRes = await axios.post('https://overpass-api.de/api/interpreter', query, {
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                httpsAgent: new https.Agent({ rejectUnauthorized: false }),
+                timeout: 5000
+            });
+
+            if (waterRes.data && waterRes.data.elements) {
+                const waterFeatures = [];
+                for (const el of waterRes.data.elements) {
+                    if (el.type === 'way' && el.geometry && el.geometry.length > 2) {
+                        const coords = el.geometry.map(p => [p.lon, p.lat]);
+                        if (coords[0][0] !== coords[coords.length - 1][0] || coords[0][1] !== coords[coords.length - 1][1]) {
+                            coords.push(coords[0]);
+                        }
+                        waterFeatures.push(turf.polygon([coords]));
+                    }
+                }
+
+                // Clip each region against water
+                for (let r = 0; r < regions.length; r++) {
+                    const region = regions[r];
+                    let myPoly = turf.polygon([region.polygon_bounds.map(p => [p.lng, p.lat])]);
+
+                    for (const water of waterFeatures) {
+                        try {
+                            myPoly = turf.difference(turf.featureCollection([myPoly, water]));
+                            if (!myPoly) break;
+                        } catch (e) { /* Ignore invalid topologies during subtraction */ }
+                    }
+
+                    if (myPoly) {
+                        // Extract the outer ring of the remaining polygon
+                        let clippedCoords = [];
+                        if (myPoly.geometry.type === 'MultiPolygon') {
+                            clippedCoords = myPoly.geometry.coordinates[0][0];
+                        } else {
+                            clippedCoords = myPoly.geometry.coordinates[0];
+                        }
+                        // Update response with clipped coordinates on land
+                        region.polygon_bounds = clippedCoords.map(c => ({ lat: c[1], lng: c[0] }));
+                    }
+                }
+            }
+        } catch (waterError) {
+            console.error("Water clipping skipped (timeout/error):", waterError.message);
         }
 
         res.json({
