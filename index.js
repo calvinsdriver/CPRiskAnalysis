@@ -49,9 +49,10 @@ app.all('/generate-polygon', async (req, res) => {
         // Generate offsets for the other regions
         for (let r = 1; r < numRegions; r++) {
             const angle = Math.random() * 2 * Math.PI;
-            // Ensure distance is around 0.0350-0.0550 to prevent overlap (max radius is ~0.0150)
-            const distLat = 0.0350 + Math.random() * 0.0200;
-            const distLng = 0.0350 + Math.random() * 0.0200;
+            // The max radius of a single polygon is ~0.0150
+            // We need the centers to be at least 0.0350+ apart to prevent any overlap
+            const distLat = 0.0400 + Math.random() * 0.0300;
+            const distLng = 0.0400 + Math.random() * 0.0300;
             centerPoints.push({
                 lat: centerLat + (Math.sin(angle) * distLat),
                 lng: centerLng + (Math.cos(angle) * distLng)
