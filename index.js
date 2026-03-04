@@ -47,15 +47,27 @@ app.all('/generate-polygon', async (req, res) => {
         const centerPoints = [{ lat: centerLat, lng: centerLng }];
 
         // Generate offsets for the other regions
-        for (let r = 1; r < numRegions; r++) {
-            const angle = Math.random() * 2 * Math.PI;
-            // The max radius of a single polygon is ~0.0150
-            // We need the centers to be at least 0.0350+ apart to prevent any overlap
-            const distLat = 0.0400 + Math.random() * 0.0300;
-            const distLng = 0.0400 + Math.random() * 0.0300;
+        // Instead of purely random angles which can group polygons together and overlap,
+        // we use a 4-quadrant system to force them far away from each other and the center.
+        const gridOffsets = [
+            { latModifier: 1, lngModifier: 1 },   // Top Right
+            { latModifier: 1, lngModifier: -1 },  // Top Left
+            { latModifier: -1, lngModifier: 1 },  // Bottom Right
+            { latModifier: -1, lngModifier: -1 }  // Bottom Left
+        ];
+
+        // Shuffle the grid directions so the 3-5 regions don't always appear in the same spots
+        gridOffsets.sort(() => Math.random() - 0.5);
+
+        for (let r = 1; r < numRegions && r <= gridOffsets.length; r++) {
+            // Maximum radius of a polygon is ~0.0150
+            // Placing the centers 0.0400 degrees away in both directions mathematically guarantees no overlap
+            const distLat = 0.0400 + Math.random() * 0.0200;
+            const distLng = 0.0400 + Math.random() * 0.0200;
+
             centerPoints.push({
-                lat: centerLat + (Math.sin(angle) * distLat),
-                lng: centerLng + (Math.cos(angle) * distLng)
+                lat: centerLat + (distLat * gridOffsets[r - 1].latModifier),
+                lng: centerLng + (distLng * gridOffsets[r - 1].lngModifier)
             });
         }
 
