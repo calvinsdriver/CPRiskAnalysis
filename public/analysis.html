@@ -38,7 +38,7 @@
         }
 
         h1 {
-            font-size: 1.25rem;
+            font-size: 1.875rem;
             font-weight: 800;
             color: var(--text);
             margin-bottom: 0.5rem;
@@ -56,7 +56,7 @@
             color: var(--primary);
             border-radius: 9999px;
             font-weight: 600;
-            font-size: 0.45rem;
+            font-size: 0.675rem;
             margin-top: 1rem;
         }
 
@@ -84,7 +84,7 @@
         }
 
         .card h2 {
-            font-size: 0.625rem;
+            font-size: 0.9375rem;
             margin-top: 0;
             margin-bottom: 1rem;
             display: flex;
@@ -95,7 +95,7 @@
         .card-content {
             color: var(--text-light);
             line-height: 1.6;
-            font-size: 0.475rem;
+            font-size: 0.7125rem;
         }
 
         .loading {
@@ -155,7 +155,7 @@
 
         #raw-output {
             margin-top: 2rem;
-            font-size: 0.4rem;
+            font-size: 0.6rem;
             color: var(--text-light);
             white-space: pre-wrap;
             display: none;
@@ -166,7 +166,6 @@
 <body>
     <div class="container">
         <header>
-            <h1>Risk Analysis Report</h1>
             <div id="address-display" class="address-badge">Loading address...</div>
         </header>
 
@@ -228,7 +227,7 @@
                     card.innerHTML = `
                         <h2><span>${icon}</span> ${risk.title}</h2>
                         <div class="card-content">${risk.description}</div>
-                        <div style="margin-top: 1rem; font-size: 0.4rem; font-weight: 700; color: ${getRiskColor(risk.risk_level)}">
+                        <div style="margin-top: 1rem; font-size: 0.6rem; font-weight: 700; color: ${getRiskColor(risk.risk_level)}">
                             RISK LEVEL: ${risk.risk_level.toUpperCase()}
                         </div>
                     `;
