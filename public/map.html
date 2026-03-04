@@ -123,6 +123,12 @@
         }
 
         fetchPolygon();
+
+        GwCrossOriginExternal.setValues({
+            parentValue: "this is test here"          // "parentValue" matches the EmbeddedWidgetRef name
+        }).then(function () {
+            console.log("PCF widget updated");
+        });
     </script>
 </body>
 
