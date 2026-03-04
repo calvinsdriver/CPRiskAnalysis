@@ -62,7 +62,7 @@
                 const addressParams = urlParams.get('address') || "Alexanderstraße 15, 10178 Berlin, Germany";
 
                 // Call the API with the address as a query parameter
-                const response = await fetch(`https://address-service-six.vercel.app/generate-polygon?address=${encodeURIComponent(addressParams)}`);
+                const response = await fetch(`https://cp-risk-analysis.vercel.app/generate-polygon?address=${encodeURIComponent(addressParams)}`);
 
                 const data = await response.json();
 
