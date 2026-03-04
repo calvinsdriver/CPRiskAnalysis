@@ -14,8 +14,10 @@ app.post('/generate-polygon', async (req, res) => {
     try {
         // 1. Geocode the address using free Nominatim API
         const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1`;
+        const https = require('https');
         const response = await axios.get(url, {
-            headers: { 'User-Agent': 'FloodZoneTester/1.0' } // Nominatim requires a User-Agent
+            headers: { 'User-Agent': 'FloodZoneTester/1.0' },
+            httpsAgent: new https.Agent({ rejectUnauthorized: false })
         });
 
         if (response.data.length === 0) {
@@ -58,8 +60,8 @@ app.post('/generate-polygon', async (req, res) => {
         });
 
     } catch (error) {
-        console.error("Error geocoding:", error.message);
-        res.status(500).json({ error: "Failed to fetch geocode data" });
+        console.error("Error geocoding:", error.message || error);
+        res.status(500).json({ error: "Failed to fetch geocode data", details: error.message });
     }
 });
 
