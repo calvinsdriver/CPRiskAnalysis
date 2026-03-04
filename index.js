@@ -4,6 +4,10 @@ const axios = require('axios');
 const app = express();
 app.use(express.json());
 
+// Serve static frontend files (like map.html) from the public directory
+const path = require('path');
+app.use(express.static(path.join(__dirname, 'public')));
+
 // Enable CORS for frontend requests
 app.use((req, res, next) => {
     res.header("Access-Control-Allow-Origin", "*");
